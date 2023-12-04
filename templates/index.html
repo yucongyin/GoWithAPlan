@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create Itinerary</title>
+</head>
+<body>
+    <div class="container">
+    <form id="itineraryForm">
+        <label for="name">Destination Name:</label>
+        <input list="cities" id="name" name="name" required>
+            <datalist id="cities">
+                <!-- List of major Canadian cities -->
+                <option value="Toronto">
+                <option value="Montreal">
+                <option value="Vancouver">
+                <option value="Calgary">
+                <option value="Edmonton">
+                <!-- ... more cities ... -->
+            </datalist><br><br>
+
+        <label for="type">Type (e.g., city, park, etc.):</label>
+        <input type="text" id="type" name="type" required><br><br>
+
+        <label for="description">Specific Location:</label>
+        <textarea id="description" name="description" required></textarea><br><br>
+
+        <input type="submit" value="Add to Itinerary">
+    </form>
+
+    <button id="showItinerary">Show Detailed Itinerary</button>
+
+    <div id="itineraryOverview">
+        <!-- Itinerary details will be displayed here -->
+    </div>
+
+</div>
+
+    <script>
+        document.getElementById('itineraryForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    let userLocation = `${position.coords.latitude},${position.coords.longitude}`;
+                    console.log("user is at",userLocation)
+                    submitForm(userLocation);
+                }, function(error) {
+                    console.error('Error getting location:', error);
+                    submitForm(''); // Submit form without location if error occurs
+                });
+            } else {
+                console.error('Geolocation is not supported by this browser.');
+                submitForm(''); // Submit form without location if geolocation is not supported
+            }
+        });
+
+        function submitForm(userLocation) {
+            let formData = {
+                user_id: '001335114',
+                name: document.getElementById('name').value,
+                type: document.getElementById('type').value,
+                description: document.getElementById('description').value,
+                user_location: userLocation
+            };
+            console.log("Form Data being sent:", formData);
+    
+            fetch('/add_location', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    let itineraryOverview = document.getElementById('itineraryOverview');
+                    itineraryOverview.innerHTML += `<p>Added: ${formData.name}, ${formData.type}, ${formData.description}</p>`;
+                } else {
+                    console.error('Error:', error);
+                }
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+        }
+        function createItineraryItem(item) {
+            let div = document.createElement('div');
+            div.className = 'itinerary-item';
+            div.innerHTML = `<strong>${item.name}</strong> (${item.type})<div class="details">Where to play: ${item.description}<br>Weather: ${item.weather}<br>Distance: ${item.distance}<br>Duration: ${item.duration}<button class="map-btn">Show on Map</button><div class="map-container"></div></div>`;
+            div.onclick = function(event) {
+                if (event.target.classList.contains('map-btn')) {
+                    let mapContainer = this.querySelector('.map-container');
+                    if (!mapContainer.innerHTML) {
+                        mapContainer.innerHTML = `<iframe src="https://www.google.com/maps/embed/v1/place?key=AIzaSyBusutsNc2SnwktR801ILkmhyPa9L6n3HQ&q=${encodeURIComponent(item.description)}" allowfullscreen></iframe>`;
+                    }
+                    mapContainer.style.display = mapContainer.style.display === 'none' ? 'block' : 'none';
+                } else {
+                    this.querySelector('.details').style.display = this.querySelector('.details').style.display === 'none' ? 'block' : 'none';
+                }
+            };
+            return div;
+        } 
+
+        document.getElementById('showItinerary').addEventListener('click', function() {
+            fetch(`/get_detailed_itinerary?user_id=001335114`)
+                .then(response => response.json())
+                .then(data => {
+                    let itineraryOverview = document.getElementById('itineraryOverview');
+                    itineraryOverview.innerHTML = '';
+                    data.forEach(item => {
+                        itineraryOverview.appendChild(createItineraryItem(item));
+                    });
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        });
+
+     
+    </script>
+</body>
+
+<style>
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f0f0f0;
+        color: #333;
+    }
+    .container {
+        max-width: 800px;
+        margin: 40px auto;
+        padding: 20px;
+        background: #ffffff;
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+    h1 {
+        text-align: center;
+        color: #333;
+    }
+    label {
+        margin-top: 15px;
+        display: block;
+        font-weight: bold;
+    }
+    input[type="text"], textarea {
+        width: 100%;
+        padding: 10px;
+        margin-top: 5px;
+        border-radius: 5px;
+        border: 1px solid #ccc;
+        box-sizing: border-box;
+    }
+    button {
+        width: 100%;
+        padding: 15px;
+        background-color: #007BFF;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        margin-top: 20px;
+    }
+    button:hover {
+        background-color: #0056b3;
+    }
+    .itinerary-item {
+        background: #e3e3e3;
+        padding: 15px;
+        margin-top: 20px;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        border-left: 5px solid #007BFF;
+    }
+    .itinerary-item:hover {
+        background: #d1d1d1;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    .details {
+        margin-top: 10px;
+        display: none;
+        line-height: 1.6;
+    }
+</style>
+</html>
